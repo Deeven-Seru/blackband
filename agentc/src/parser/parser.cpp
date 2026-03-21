@@ -1,3 +1,4 @@
+#include <iostream>
 #include "parser.hpp"
 #include <sstream>
 #include "../toolchain/pkg.hpp"
@@ -105,12 +106,21 @@ ImportNode Parser::parse_import(std::vector<TopLevelNode>& target_decls) {
 
 TopLevelNode Parser::parse_top_level() {
     AnnotationBlock annos;
-    if (check(Token::Kind::TOK_ANN_OPEN)) annos = parse_annotation_block();
-
+    while (check(Token::Kind::TOK_ANN_OPEN) || (current().kind >= Token::Kind::TOK_ANN_INTENT && current().kind <= Token::Kind::TOK_ANN_FFI)) {
+        if (check(Token::Kind::TOK_ANN_OPEN)) {
+            auto b = parse_annotation_block();
+            for (auto& an : b.annotations) {
+                annos.annotations.push_back(std::move(an));
+            }
+        } else {
+            annos.annotations.push_back(parse_annotation());
+        }
+    }
     if (check(Token::Kind::TOK_FUNC)) return parse_fn(std::move(annos));
     if (check(Token::Kind::TOK_TYPE_AGT)) return parse_agent(std::move(annos));
     if (check(Token::Kind::TOK_TYPE_DAT)) return parse_dat();
     if (check(Token::Kind::TOK_TYPE_ENM)) return parse_enm();
+
 
     emit_error("E104", "Expected Top Level Decl", "Provide ƒ or Agt", {});
     advance();
@@ -206,7 +216,7 @@ FnNode Parser::parse_fn(AnnotationBlock annos) {
     if (match(Token::Kind::TOK_SEMICOLON)) {
         n.is_external = true;
         n.body = StmtNode();
-        n.body.kind = StmtNode::Kind::BlockStmt;
+        n.body.kind = StmtNode::Kind::Block;
     } else {
         n.body = parse_block();
     }

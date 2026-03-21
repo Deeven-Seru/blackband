@@ -212,7 +212,14 @@ bool CodeGen::is_result_llvm_type(llvm::Type* ty) {
 
 void CodeGen::gen_fn_decl(const FnNode& fn) {
     std::vector<llvm::Type*> param_types;
-    for (auto& p : fn.params) param_types.push_back(llvm_type(p.type));
+    for (auto& p : fn.params) {
+        if (fn.is_external && p.type.kind == TypeNode::Kind::Str) {
+            // C FFI: str → raw ptr (char*)
+            param_types.push_back(llvm::PointerType::getUnqual(ctx_));
+        } else {
+            param_types.push_back(llvm_type(p.type));
+        }
+    }
     llvm::Type* ret_type = llvm_type(fn.return_type);
     auto* fn_type = llvm::FunctionType::get(ret_type, param_types, false);
     auto* llvm_fn = llvm::Function::Create(fn_type, llvm::Function::ExternalLinkage, fn.name, module_.get());
@@ -221,9 +228,11 @@ void CodeGen::gen_fn_decl(const FnNode& fn) {
         if (i < fn.params.size()) arg.setName(fn.params[i++].name);
     }
     functions_[fn.name] = llvm_fn;
+    if (fn.is_external) ffi_externals_.insert(fn.name);
 }
 
 void CodeGen::gen_fn_body(const FnNode& fn) {
+    if (fn.is_external) return;
     auto* llvm_fn = functions_[fn.name];
     current_fn_   = llvm_fn;
     auto* entry = llvm::BasicBlock::Create(ctx_, "entry", llvm_fn);
@@ -509,6 +518,9 @@ llvm::Value* CodeGen::gen_call(const ExprNode& expr) {
             if (arg_val && arg_val->getType() != pty) {
                 if (arg_val->getType()->isIntegerTy(64) && pty->isStructTy()) {
                     arg_val = cast_i64_to_str(arg_val);
+                } else if (arg_val->getType()->isStructTy() && pty->isPointerTy() && ffi_externals_.count(fn_name)) {
+                    // C FFI: extract raw ptr from AgentC fat string {ptr, i64}
+                    arg_val = builder_->CreateExtractValue(arg_val, {0}, "ffi_ptr");
                 } else if (!pty->isStructTy() && !arg_val->getType()->isStructTy()) {
                     arg_val = builder_->CreateZExtOrBitCast(arg_val, pty);
                 }

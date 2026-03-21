@@ -4,7 +4,7 @@
 #include <variant>
 #include <optional>
 #include <memory>
-#include <any>
+
 #include "../lexer/token.hpp"
 
 namespace agentc {
@@ -77,7 +77,13 @@ struct TypeNode : NodeBase {
 struct AnnotationNode : NodeBase {
     enum class Kind { Intent, Cost, Effect, Verify, Trust, Confidence, Retry, Goal, Capability, Trace, Protocol, FFI };
     Kind kind;
-    std::any value; 
+    std::variant<
+        std::string,
+        std::vector<std::string>,
+        std::pair<std::string, std::unique_ptr<ExprNode>>, 
+        double,
+        std::pair<int,int>
+    > value; 
 };
 
 struct AnnotationBlock : NodeBase {

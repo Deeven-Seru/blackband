@@ -139,9 +139,9 @@ Token Lexer::scan_at_primitive() {
     if (val == "@ep") return make_token(Token::Kind::TOK_MEM_EP, val);
     if (val == "@sem") return make_token(Token::Kind::TOK_MEM_SEM, val);
     if (val == "@budget") return make_token(Token::Kind::TOK_AT_BUDGET, val);
-    if (val == "@trace") return make_token(Token::Kind::TOK_AT_TRACE, val);
-    if (val == "@prot") return make_token(Token::Kind::TOK_AT_PROTOCOL, val);
-    if (val == "@ffi") return make_token(Token::Kind::TOK_AT_FFI, val);
+    if (val == "@trace") return make_token(Token::Kind::TOK_ANN_TRACE, val);
+    if (val == "@prot") return make_token(Token::Kind::TOK_ANN_PROTOCOL, val);
+    if (val == "@ffi") return make_token(Token::Kind::TOK_ANN_FFI, val);
     if (val == "@correct") return make_token(Token::Kind::TOK_AT_CORRECT, val);
     if (val == "@prune") return make_token(Token::Kind::TOK_AT_PRUNE, val);
     if (val == "@snapshot") return make_token(Token::Kind::TOK_AT_SNAP, val);

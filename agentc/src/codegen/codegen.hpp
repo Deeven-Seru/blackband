@@ -16,6 +16,7 @@
 #include "llvm/Target/TargetMachine.h"
 
 #include <unordered_map>
+#include <unordered_set>
 #include <string>
 #include <memory>
 #include <vector>
@@ -55,6 +56,7 @@ private:
     // Symbol tables
     std::unordered_map<std::string, llvm::Value*>       values_;
     std::unordered_map<std::string, llvm::Function*>    functions_;
+    std::unordered_set<std::string>                     ffi_externals_;
     std::unordered_map<std::string, llvm::StructType*>  struct_types_;
     std::unordered_map<std::string, llvm::GlobalVariable*> globals_;
 
