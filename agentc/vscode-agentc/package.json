@@ -1,0 +1,41 @@
+{
+  "name": "agentc",
+  "displayName": "AgentC",
+  "description": "AgentC language support — syntax, errors, autocomplete",
+  "version": "0.6.0",
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Programming Languages"],
+  "activationEvents": ["onLanguage:agentc"],
+  "contributes": {
+    "languages": [{
+      "id": "agentc",
+      "aliases": ["AgentC", "agc"],
+      "extensions": [".agc"],
+      "configuration": "./language-config.json"
+    }],
+    "grammars": [{
+      "language": "agentc",
+      "scopeName": "source.agc",
+      "path": "./syntaxes/agentc.tmLanguage.json"
+    }],
+    "configuration": {
+      "title": "AgentC",
+      "properties": {
+        "agentc.serverPath": {
+          "type": "string",
+          "default": "agentc-lsp",
+          "description": "Path to agentc-lsp binary"
+        },
+        "agentc.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "AGENTC_API_KEY for ctx::infer"
+        }
+      }
+    }
+  },
+  "main": "./extension.js",
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  }
+}

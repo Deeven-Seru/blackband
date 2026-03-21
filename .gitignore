@@ -1,0 +1,29 @@
+# Build outputs
+agentc/build/
+agentc/agentc
+agentc/test_agent
+agentc/spec_test
+agentc/briefing_agent
+agentc/*.o
+agentc/*.ll
+agentc/*.bc
+
+# Output files from agents
+agentc/test_output.txt
+agentc/spec_output.txt
+agentc/briefing_report.txt
+agentc/briefing_summary.txt
+agentc/log_a.txt
+agentc/log_b.txt
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# VS Code
+.vscode/
+
+# Node modules (VS Code extension)
+agentc/vscode-agentc/node_modules/
+agentc/vscode-agentc/out/
+agentc/vscode-agentc/*.vsix

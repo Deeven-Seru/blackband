@@ -1,0 +1,64 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "AgentC",
+  "patterns": [
+    {
+      "include": "#keywords"
+    },
+    {
+      "include": "#strings"
+    },
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#types"
+    }
+  ],
+  "repository": {
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.agentc",
+          "match": "\\b(if|else|import|loop|match|break|continue|return|true|false)\\b"
+        },
+        {
+          "name": "storage.type.function.agentc",
+          "match": "ƒ|fn"
+        },
+        {
+          "name": "keyword.operator.agentc",
+          "match": "==|!=|<=|>=|<|>|\\+|-|\\*|/|\\?|\\^|!|@|\\$|~"
+        },
+        {
+          "name": "entity.name.function.agentc",
+          "match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\s*(?=\\()"
+        }
+      ]
+    },
+    "strings": {
+      "name": "string.quoted.double.agentc",
+      "begin": "\"",
+      "end": "\"",
+      "patterns": [
+        {
+          "name": "constant.character.escape.agentc",
+          "match": "\\\\."
+        }
+      ]
+    },
+    "comments": {
+      "name": "comment.line.double-slash.agentc",
+      "match": "//.*$"
+    },
+    "types": {
+      "patterns": [
+        {
+          "name": "support.type.agentc",
+          "match": "\\b(i8|i16|i32|i64|i128|u8|u16|u32|u64|u128|f32|f64|B|Str|Tru|Utr|Own|Ref|Opt|Lst|Cnf|Bnd|IoR|NetR|AgtR)\\b"
+        }
+      ]
+    }
+  },
+  "scopeName": "source.agc"
+}
