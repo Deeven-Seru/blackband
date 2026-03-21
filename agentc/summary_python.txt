@@ -1,0 +1,7 @@
+This JSON describes a slideshow titled "Sample Slide Show."
+
+*   **Author:** "Yours Truly"
+*   **Date:** "date of publication"
+*   **Content:** It contains two slides:
+    1.  A title slide: "Wake up to WonderWidgets!"
+    2.  An "Overview" slide with two items: "Why *WonderWidgets* are great" and "Who *buys* WonderWidgets."

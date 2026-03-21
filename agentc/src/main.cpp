@@ -2,6 +2,9 @@
 #include "parser/parser.hpp"
 #include "typechecker/typechecker.hpp"
 #include "codegen/codegen.hpp"
+#include "toolchain/repl.hpp"
+#include "toolchain/debugger.hpp"
+#include "toolchain/pkg.hpp"
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -9,14 +12,33 @@
 int main(int argc, char** argv) {
     // Parse flags
     bool emit_ir_flag = false;
+    bool run_repl_flag = false;
+    bool debug_flag = false;
+    std::string get_pkg_url = "";
     std::string output = "a.out";
     std::string input;
 
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
         if (arg == "--emit-ir")   emit_ir_flag = true;
+        else if (arg == "--repl") run_repl_flag = true;
+        else if (arg == "--debug") debug_flag = true;
+        else if (arg == "get" && i+1 < argc) get_pkg_url = argv[++i];
         else if (arg == "-o" && i+1 < argc) output = argv[++i];
         else input = arg;
+    }
+
+    if (!get_pkg_url.empty()) {
+        agentc::toolchain::PackageManager pkg;
+        std::string res = pkg.resolve(get_pkg_url);
+        std::cout << "[pkg] Fetch cycle completed for: " << get_pkg_url << "\n";
+        return 0;
+    }
+
+    if (run_repl_flag) {
+        agentc::toolchain::REPL repl;
+        repl.run();
+        return 0;
     }
 
     if (input.empty()) {
@@ -67,6 +89,10 @@ int main(int argc, char** argv) {
     } else {
         cg.emit_executable(output);
         std::cout << "{\"status\":\"ok\",\"bin\":\"" << output << "\"}\n";
+        if (debug_flag) {
+            agentc::toolchain::NativeDebugger dbg;
+            dbg.run(output);
+        }
     }
 
     return 0;

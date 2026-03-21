@@ -40,11 +40,11 @@ private:
     Token           expect(Token::Kind kind, std::string_view msg);
     bool            at_end() const;
 
-    void            emit_error(std::string code, std::string cause, std::string fix, std::vector<std::string> alts);
+    void            emit_error(const std::string& code, const std::string& exp, const std::string& fix, const std::vector<std::string>& alts);
     void            synchronize();
 
     ProgramNode     parse_program();
-    ImportNode      parse_import();
+    ImportNode      parse_import(std::vector<TopLevelNode>& target_decls);
     TopLevelNode    parse_top_level();
     FnNode          parse_fn(AnnotationBlock annos);
     AgtNode         parse_agent(AnnotationBlock annos);

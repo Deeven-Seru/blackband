@@ -1,7 +1,9 @@
 // runtime/modules/io.cpp
 #include "io.hpp"
+#include <iostream>
 #include <fstream>
 #include <sstream>
+#include <filesystem>
 #include <filesystem>
 #include <vector>
 

@@ -26,6 +26,7 @@ AgcResult http_request(const std::string& url,
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+    curl_easy_setopt(curl, CURLOPT_USERAGENT, "AgentC/1.0"); // Fix 403 Forbidden
 
     if (method == "POST") {
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.c_str());

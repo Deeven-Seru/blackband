@@ -1,5 +1,6 @@
 #include "parser.hpp"
 #include <sstream>
+#include "../toolchain/pkg.hpp"
 
 namespace agentc {
 
@@ -32,7 +33,7 @@ Token Parser::expect(Token::Kind kind, std::string_view msg) {
     return current(); // Return invalid for progression
 }
 
-void Parser::emit_error(std::string code, std::string cause, std::string fix, std::vector<std::string> alts) {
+void Parser::emit_error(const std::string& code, const std::string& cause, const std::string& fix, const std::vector<std::string>& alts) {
     errors_.push_back({code, current().line, current().col, cause, fix, alts});
 }
 
@@ -50,16 +51,53 @@ ProgramNode Parser::parse_program() {
     ProgramNode p; p.loc = SourceLoc{current().line, current().col, current().offset};
     while (!at_end()) {
         try {
-            if (check(Token::Kind::TOK_IMPORT)) p.imports.push_back(parse_import());
+            if (check(Token::Kind::TOK_IMPORT)) p.imports.push_back(parse_import(p.decls));
             else p.decls.push_back(parse_top_level());
         } catch(...) { synchronize(); }
     }
     return p;
 }
 
-ImportNode Parser::parse_import() {
+
+
+ImportNode Parser::parse_import(std::vector<TopLevelNode>& target_decls) {
     ImportNode n; n.loc = SourceLoc{current().line, current().col, current().offset};
     expect(Token::Kind::TOK_IMPORT, "Expected +>");
+    
+    if (current().kind == Token::Kind::TOK_STR_LIT) {
+        n.module_path = advance().value;
+        n.is_remote = true;
+        expect(Token::Kind::TOK_SEMICOLON, "Expected ;");
+
+        // Dynamically resolve package via native PackageManager
+        toolchain::PackageManager pkg;
+        std::string raw_source = pkg.resolve(n.module_path);
+        
+        if (!raw_source.empty()) {
+            // Recursive AST extraction
+            Lexer sub_lexer(raw_source, n.module_path);
+            std::vector<Token> sub_tokens;
+            while (!sub_lexer.at_end()) {
+                auto t = sub_lexer.next(); sub_tokens.push_back(t);
+                if (t.kind == Token::Kind::TOK_EOF) break;
+            }
+            if (!sub_lexer.has_errors()) {
+                Parser sub_parser(std::move(sub_tokens), n.module_path);
+                auto sub_ast = sub_parser.parse();
+                if (!sub_parser.has_errors()) {
+                    for (auto& decl : sub_ast.decls) {
+                        target_decls.push_back(std::move(decl));
+                    }
+                } else {
+                    emit_error("E110", "Package Module Error", "Fix underlying module syntax", {});
+                }
+            } else {
+                emit_error("E110", "Package Lexing Error", "Corrupt remote module", {});
+            }
+        }
+        return n;
+    } 
+
     while(current().kind == Token::Kind::TOK_IDENT) { n.module_path += advance().value; if (match(Token::Kind::TOK_BIND)) n.module_path += "::"; else break; }
     expect(Token::Kind::TOK_SEMICOLON, "Expected ;");
     return n;
@@ -147,6 +185,11 @@ AnnotationNode Parser::parse_annotation() {
             n.value = expect(Token::Kind::TOK_IDENT, "Expected protocol").value; 
         } else { emit_error("E101", "Unknown Annotation", "Remove or fix annotation", {}); advance(); }
     }
+    else if (match(Token::Kind::TOK_ANN_FFI)) {
+        n.kind = AnnotationNode::Kind::FFI; expect(Token::Kind::TOK_LPAREN, "Expected (");
+        n.value = expect(Token::Kind::TOK_STR_LIT, "Expected string dialect").value;
+        expect(Token::Kind::TOK_RPAREN, "Expected )");
+    }
     else { advance(); } // Lazy boundary bypass for minimal LLM
     return n;
 }
@@ -159,7 +202,14 @@ FnNode Parser::parse_fn(AnnotationBlock annos) {
     n.params = parse_params();
     expect(Token::Kind::TOK_ARROW, "Expected ->");
     n.return_type = parse_type();
-    n.body = parse_block();
+
+    if (match(Token::Kind::TOK_SEMICOLON)) {
+        n.is_external = true;
+        n.body = StmtNode();
+        n.body.kind = StmtNode::Kind::BlockStmt;
+    } else {
+        n.body = parse_block();
+    }
     return n;
 }
 

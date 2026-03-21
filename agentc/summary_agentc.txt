@@ -1,0 +1,23 @@
+```json
+{
+  "slideshow": {
+    "author": "Yours Truly",
+    "date": "date of publication",
+    "title": "Sample Slide Show",
+    "slides": [
+      {
+        "title": "Wake up to WonderWidgets!",
+        "type": "all"
+      },
+      {
+        "title": "Overview",
+        "type": "all",
+        "items": [
+          "Why u003cemu003eWonderWidgetsu003c/emu003e are great",
+          "Who u003cemu003ebuysu003c/emu003e WonderWidgets"
+        ]
+      }
+    ]
+  }
+}
+```
