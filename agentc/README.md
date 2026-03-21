@@ -1,6 +1,6 @@
 <p align="center">
   <strong>AgentC</strong><br>
-  <em>A compiled, type-safe language for building verifiable AI agents.</em>
+  <em>A compiled, type-safe language designed for AI agents to use.</em>
 </p>
 
 <p align="center">
@@ -9,9 +9,11 @@
 
 ---
 
-AgentC is a domain-specific language that compiles to native code via LLVM. It is designed for one purpose: building AI agents whose safety properties are enforced at compile time, not at runtime.
+AgentC is a programming language designed to be written and executed by AI agents. It compiles to native code via LLVM.
 
-The compiler treats intent declarations, trust boundaries, token budgets, and side-effect tracking as first-class citizens in the type system. Code that violates these constraints does not compile.
+The core idea: when an AI agent writes code, it needs a compiler that acts as an unbypassable safety layer. AgentC's type system enforces intent declarations, trust boundaries, token budgets, and side-effect tracking at compile time. An agent physically cannot produce a binary that violates these constraints — the compiler rejects it before execution.
+
+This is the difference between "an agent that promises to be safe" and "an agent whose code is provably safe because the compiler won't let it be anything else."
 
 ```agentc
 +> net::get;
