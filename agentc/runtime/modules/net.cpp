@@ -3,6 +3,10 @@
 #include <curl/curl.h>
 #include <string>
 #include <sstream>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <arpa/inet.h>
 
 namespace {
 
@@ -160,10 +164,45 @@ AgcResult agc_net_post(AgcStr url, AgcStr body) {
 
 AgcResult agc_net_dns(AgcStr host) {
     if (host.ptr == nullptr || host.len <= 0) return agc_err(804, "net::dns: invalid host");
-    // Simplified: just return the host as-is for now
-    char* heap = agc_heap_alloc(host.len + 1);
-    memcpy(heap, host.ptr, host.len + 1);
-    return agc_ok_str(heap, host.len);
+
+    std::string hostname(host.ptr, host.len);
+
+    struct addrinfo hints{};
+    hints.ai_family   = AF_UNSPEC;   // IPv4 or IPv6
+    hints.ai_socktype = SOCK_STREAM;
+
+    struct addrinfo* result = nullptr;
+    int rc = getaddrinfo(hostname.c_str(), nullptr, &hints, &result);
+    if (rc != 0) {
+        return agc_err(804, std::string("net::dns: ") + gai_strerror(rc));
+    }
+
+    // Collect all resolved addresses as a JSON array
+    std::string out = "[";
+    bool first = true;
+    for (struct addrinfo* rp = result; rp != nullptr; rp = rp->ai_next) {
+        char addr_buf[INET6_ADDRSTRLEN] = {};
+        if (rp->ai_family == AF_INET) {
+            auto* s = reinterpret_cast<struct sockaddr_in*>(rp->ai_addr);
+            inet_ntop(AF_INET, &s->sin_addr, addr_buf, sizeof(addr_buf));
+        } else if (rp->ai_family == AF_INET6) {
+            auto* s = reinterpret_cast<struct sockaddr_in6*>(rp->ai_addr);
+            inet_ntop(AF_INET6, &s->sin6_addr, addr_buf, sizeof(addr_buf));
+        } else {
+            continue;
+        }
+        if (!first) out += ",";
+        out += "\"";
+        out += addr_buf;
+        out += "\"";
+        first = false;
+    }
+    out += "]";
+    freeaddrinfo(result);
+
+    char* heap = agc_heap_alloc(out.size() + 1);
+    memcpy(heap, out.c_str(), out.size() + 1);
+    return agc_ok_str(heap, (int64_t)out.size());
 }
 
 } // extern "C"

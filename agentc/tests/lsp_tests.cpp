@@ -1,5 +1,6 @@
 #include "../src/lsp/lsp_server.hpp"
 #include <cassert>
+#include <functional>
 #include <iostream>
 
 using namespace agentc::lsp;
@@ -78,7 +79,7 @@ int main() {
 
     run_lsp_test("TEST 8: Hover over function -> signature + intent shown", [&](){
         std::string src = "#[ #>\"Does work\" ] ƒ main() -> i32 { ^(0i); }";
-        auto res = hov.hover(src, {0, 27}); // hover over 'main'
+        auto res = hov.hover(src, {0, 28}); // hover over 'main' (within token range col-1..col-1+len)
         assert(res.contents != "");
     });
 

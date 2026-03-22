@@ -645,7 +645,13 @@ bool CodeGen::emit_ir(const std::string& path) {
 bool CodeGen::emit_executable(const std::string& output) {
     emit_ir("/tmp/agentc_out.ll");
     // Compile directly linking the runtime source natively into the final LLVM executable output via Clang
-    std::string cmd = "clang -O2 /tmp/agentc_out.ll runtime/agentc_runtime.cpp runtime/modules/io.cpp runtime/modules/net.cpp runtime/modules/ctx.cpp runtime/modules/val.cpp runtime/modules/mem.cpp runtime/modules/trc.cpp -o " + output + " -lstdc++ -lcurl 2>&1";
+    std::string cmd = "clang -O2 /tmp/agentc_out.ll runtime/agentc_runtime.cpp"
+                      " runtime/snapshot.cpp"
+                      " runtime/modules/io.cpp runtime/modules/net.cpp"
+                      " runtime/modules/ctx.cpp runtime/modules/val.cpp"
+                      " runtime/modules/mem.cpp runtime/modules/trc.cpp"
+                      " runtime/modules/std_mod.cpp"
+                      " -o " + output + " -lstdc++ -lcurl 2>&1";
     int ret = system(cmd.c_str());
     return ret == 0;
 }
