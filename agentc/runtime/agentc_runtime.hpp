@@ -12,17 +12,17 @@ struct AgcStr    { const char* ptr; int64_t len; };
 struct AgcResult { int8_t ok; int64_t val; };
 
 // ── Heap allocation ───────────────────────────
-// All AgentC heap allocs go through here
-// Phase 6: GC-aware allocator
-inline char* agc_heap_alloc(size_t n) {
-    return static_cast<char*>(malloc(n));
-}
+// All AgentC heap allocs go through here.
+// Defined in runtime/snapshot.cpp so that allocation tracking works
+// for the snapshot/restore system.
+char* agc_heap_alloc(size_t n);
 
 // ── Result constructors ───────────────────────
 inline AgcResult agc_ok_i64(int64_t v)  { return {1, v}; }
 inline AgcResult agc_ok_unit()          { return {1, 0}; }
 inline AgcResult agc_ok_str(const char* p, int64_t len) {
     // Pack str ptr into i64
+    (void)len;
     return {1, (int64_t)(uintptr_t)p};
 }
 inline AgcResult agc_err(int64_t code, const std::string& msg) {
@@ -39,6 +39,7 @@ inline AgcStr agc_make_str(const char* s) {
 // ── Snapshot/restore ──────────────────────────
 void* agc_snapshot();
 void  agc_restore(void* snap);
+void  agc_snapshot_discard(void* snap);
 
 // ── Budget declarations ───────────────────────
 int64_t agc_budget();

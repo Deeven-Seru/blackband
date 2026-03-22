@@ -82,4 +82,17 @@ AgcStr agc_prof_fn(const char* fn_name, int64_t calls, int64_t total_tokens, int
     return agc_make_str(buf);
 }
 
+// ── Snapshot integration helpers (called from runtime/snapshot.cpp) ─────────
+
+// Returns the current number of recorded trace ops.
+size_t agc_trc_op_count() {
+    return g_trace.ops.size();
+}
+
+// Trims the trace op list back to `len` entries (used by agc_restore).
+void agc_trc_trim(size_t len) {
+    if (len < g_trace.ops.size())
+        g_trace.ops.resize(len);
+}
+
 } // extern "C"

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(agentc VERSION 0.5.0 LANGUAGES CXX)
+project(agentc VERSION 0.5.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -15,6 +15,7 @@ llvm_map_components_to_libnames(llvm_libs
 
 # libcurl (for net module)
 find_package(CURL REQUIRED)
+include_directories(${CURL_INCLUDE_DIRS})
 
 # Compiler libraries
 add_library(agentc_lexer    src/lexer/token.cpp src/lexer/lexer.cpp)
@@ -23,10 +24,14 @@ add_library(agentc_tc       src/typechecker/typeenv.cpp
                             src/typechecker/rules.cpp
                             src/typechecker/typechecker.cpp)
 add_library(agentc_codegen  src/codegen/codegen.cpp)
+add_library(agentc_toolchain src/toolchain/pkg.cpp
+                              src/toolchain/repl.cpp
+                              src/toolchain/debugger.cpp)
 
 # Runtime library
 add_library(agentc_runtime STATIC
     runtime/agentc_runtime.cpp
+    runtime/snapshot.cpp
     runtime/modules/io.cpp
     runtime/modules/net.cpp
     runtime/modules/val.cpp
@@ -36,13 +41,14 @@ add_library(agentc_runtime STATIC
     runtime/modules/std_mod.cpp)
 
 target_link_libraries(agentc_runtime CURL::libcurl)
-target_include_directories(agentc_lexer    PUBLIC src/)
-target_include_directories(agentc_parser   PUBLIC src/)
-target_include_directories(agentc_tc       PUBLIC src/)
-target_include_directories(agentc_codegen  PUBLIC src/)
-target_include_directories(agentc_runtime  PUBLIC runtime/)
+target_include_directories(agentc_lexer     PUBLIC src/)
+target_include_directories(agentc_parser    PUBLIC src/)
+target_include_directories(agentc_tc        PUBLIC src/)
+target_include_directories(agentc_codegen   PUBLIC src/)
+target_include_directories(agentc_toolchain PUBLIC src/)
+target_include_directories(agentc_runtime   PUBLIC runtime/)
 
-target_link_libraries(agentc_parser   agentc_lexer)
+target_link_libraries(agentc_parser   agentc_lexer agentc_toolchain)
 target_link_libraries(agentc_tc       agentc_parser)
 target_link_libraries(agentc_codegen  agentc_tc ${llvm_libs})
 

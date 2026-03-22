@@ -1,0 +1,49 @@
+name: AgentC CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y \
+            cmake \
+            ninja-build \
+            clang-17 \
+            llvm-17-dev \
+            libcurl4-openssl-dev \
+            libffi-dev \
+            libncurses-dev
+
+      - name: Configure (CMake)
+        working-directory: agentc
+        run: |
+          cmake -B build \
+            -G Ninja \
+            -DCMAKE_C_COMPILER=clang-17 \
+            -DCMAKE_CXX_COMPILER=clang++-17 \
+            -DLLVM_DIR=/usr/lib/llvm-17/cmake \
+            -DCURL_INCLUDE_DIR=/usr/include/x86_64-linux-gnu \
+            -DCURL_LIBRARY=/usr/lib/x86_64-linux-gnu/libcurl.so \
+            -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        working-directory: agentc
+        run: cmake --build build --parallel
+
+      - name: Run tests
+        working-directory: agentc/build
+        run: ctest --output-on-failure

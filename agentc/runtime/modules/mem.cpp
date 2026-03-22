@@ -12,14 +12,6 @@ void agc_free(void* ptr) {
     if (ptr) free(ptr);
 }
 
-void* agc_snapshot() {
-    // Stub definition for snapshot capabilities
-    return nullptr;
-}
-
-void agc_restore(void* snap) {
-    // Stub
-    (void)snap;
-}
+// agc_snapshot() and agc_restore() are implemented in runtime/snapshot.cpp.
 
 } // extern "C"
