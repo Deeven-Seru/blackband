@@ -1,0 +1,213 @@
+name: AgentC CI
+
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+    branches: [ "**" ]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-22.04
+
+    steps:
+      # -----------------------------------------------------------------------
+      # 1. Checkout
+      # -----------------------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # -----------------------------------------------------------------------
+      # 2. Install system dependencies
+      # -----------------------------------------------------------------------
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y \
+            cmake \
+            ninja-build \
+            libcurl4-openssl-dev \
+            g++ \
+            llvm-17 \
+            llvm-17-dev \
+            clang-17 \
+            libclang-17-dev \
+            lld-17 \
+            pkg-config
+
+          # Make llvm-17 tools the default
+          sudo update-alternatives --install /usr/bin/llvm-config llvm-config /usr/bin/llvm-config-17 100
+          sudo update-alternatives --install /usr/bin/clang++    clang++    /usr/bin/clang++-17    100
+
+      # -----------------------------------------------------------------------
+      # 3. Configure with CMake
+      # -----------------------------------------------------------------------
+      - name: Configure (CMake)
+        working-directory: agentc
+        run: |
+          cmake -S . -B build \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_COMPILER=clang++-17 \
+            2>&1 | tee ../build.log
+
+      # -----------------------------------------------------------------------
+      # 4. Build
+      # -----------------------------------------------------------------------
+      - name: Build AgentC compiler
+        working-directory: agentc
+        run: |
+          cmake --build build --parallel $(nproc) 2>&1 | tee -a ../build.log
+
+
+      # -----------------------------------------------------------------------
+      # 5. Unit tests
+      # -----------------------------------------------------------------------
+      - name: Run unit tests
+        working-directory: agentc/build
+        run: ctest --output-on-failure -V 2>&1 | tee -a ../../build.log
+
+      # -----------------------------------------------------------------------
+      # 6. Example compilation — success cases
+      # -----------------------------------------------------------------------
+      - name: Compile success examples
+        working-directory: agentc
+        run: |
+          AGENTC="$GITHUB_WORKSPACE/agentc/build/agentc"
+          PASS=0; FAIL=0
+          declare -a RESULTS=()
+
+          compile_ok() {
+            local file="$1"
+            if "$AGENTC" "examples/$file" -o /dev/null 2>/dev/null; then
+              echo "  ✅ PASS  $file"
+              RESULTS+=("PASS:$file")
+              PASS=$((PASS+1))
+            else
+              echo "  ❌ FAIL  $file  (expected success, got error)"
+              RESULTS+=("FAIL:$file")
+              FAIL=$((FAIL+1))
+            fi
+          }
+
+          echo "=== Success examples ==="
+          compile_ok spec_conformance.agc
+          compile_ok state_machine_agent.agc
+          compile_ok briefing_agent.agc
+          compile_ok compare_agentc.agc
+
+          echo ""
+          echo "Success examples: $PASS passed, $FAIL failed"
+
+          # Save partial report for final step
+          printf '%s\n' "${RESULTS[@]}" > /tmp/success_results.txt
+          echo "PASS_COUNT=$PASS"  >> "$GITHUB_ENV"
+          echo "FAIL_COUNT=$FAIL"  >> "$GITHUB_ENV"
+
+          if [ "$FAIL" -gt 0 ]; then
+            echo "::error::$FAIL success example(s) failed to compile"
+            exit 1
+          fi
+
+      # -----------------------------------------------------------------------
+      # 7. Example compilation — security-proof cases (must fail)
+      # -----------------------------------------------------------------------
+      - name: Verify security proofs (expected compilation failures)
+        working-directory: agentc
+        run: |
+          AGENTC="$GITHUB_WORKSPACE/agentc/build/agentc"
+          PASS=0; FAIL=0
+          declare -a RESULTS=()
+
+          compile_must_fail() {
+            local file="$1"
+            local expected_err="$2"
+            if "$AGENTC" "examples/$file" -o /dev/null 2>/dev/null; then
+              echo "  ❌ FAIL  $file  (expected error $expected_err but compiled successfully)"
+              RESULTS+=("FAIL:$file")
+              FAIL=$((FAIL+1))
+            else
+              echo "  ✅ PASS  $file  (correctly rejected with $expected_err)"
+              RESULTS+=("PASS:$file")
+              PASS=$((PASS+1))
+            fi
+          }
+
+          echo "=== Security proof examples ==="
+          compile_must_fail proof_immutability.agc E201
+          compile_must_fail proof_trust.agc         E301
+          compile_must_fail proof_cap.agc            E503
+          compile_must_fail proof_bounds.agc         E305
+          compile_must_fail proof_purity.agc         E505
+
+          echo ""
+          echo "Security proofs: $PASS passed, $FAIL failed"
+
+          printf '%s\n' "${RESULTS[@]}" >> /tmp/success_results.txt
+          PROOF_PASS=$PASS
+          PROOF_FAIL=$FAIL
+          echo "PROOF_PASS=$PROOF_PASS"  >> "$GITHUB_ENV"
+          echo "PROOF_FAIL=$PROOF_FAIL"  >> "$GITHUB_ENV"
+
+          if [ "$FAIL" -gt 0 ]; then
+            echo "::error::$FAIL security proof(s) did not fail as expected"
+            exit 1
+          fi
+
+      # -----------------------------------------------------------------------
+      # 8. Generate JSON test report
+      # -----------------------------------------------------------------------
+      - name: Generate test report
+        if: always()
+        run: |
+          TOTAL_PASS=$(( ${PASS_COUNT:-0} + ${PROOF_PASS:-0} ))
+          TOTAL_FAIL=$(( ${FAIL_COUNT:-0} + ${PROOF_FAIL:-0} ))
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          # Build per-test JSON entries from accumulated results file
+          ENTRIES=""
+          if [ -f /tmp/success_results.txt ]; then
+            while IFS= read -r line; do
+              STATUS="${line%%:*}"
+              NAME="${line#*:}"
+              if [ -n "$ENTRIES" ]; then ENTRIES="$ENTRIES,"; fi
+              ENTRIES="$ENTRIES
+              {\"name\":\"$NAME\",\"status\":\"$STATUS\"}"
+            done < /tmp/success_results.txt
+          fi
+
+          cat > test_results.json <<EOF
+          {
+            "timestamp": "$TIMESTAMP",
+            "compiler_version": "0.5.0",
+            "summary": {
+              "total_pass": $TOTAL_PASS,
+              "total_fail": $TOTAL_FAIL,
+              "success_examples_pass": ${PASS_COUNT:-0},
+              "success_examples_fail": ${FAIL_COUNT:-0},
+              "security_proofs_pass": ${PROOF_PASS:-0},
+              "security_proofs_fail": ${PROOF_FAIL:-0}
+            },
+            "tests": [$ENTRIES
+            ]
+          }
+          EOF
+
+          echo "=== test_results.json ==="
+          cat test_results.json
+
+      # -----------------------------------------------------------------------
+      # 9. Upload artifacts
+      # -----------------------------------------------------------------------
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agentc-build-artifacts
+          path: |
+            build.log
+            test_results.json
+          retention-days: 30
