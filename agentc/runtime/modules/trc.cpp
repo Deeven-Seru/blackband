@@ -1,5 +1,6 @@
 // runtime/modules/trc.cpp
 #include "trc.hpp"
+#include "../snapshot.hpp"
 #include <chrono>
 #include <vector>
 #include <string>
@@ -29,6 +30,7 @@ static int64_t now_ms() {
 extern "C" {
 
 void agc_trc_begin() {
+    agc_snapshot_discard(g_trace.snap);  // free any previous trace snapshot
     g_trace.ops.clear();
     g_trace.start_ms = now_ms();
     g_trace.tokens_used = agc_budget_used();
@@ -83,3 +85,24 @@ AgcStr agc_prof_fn(const char* fn_name, int64_t calls, int64_t total_tokens, int
 }
 
 } // extern "C"
+
+// Save/restore trace state for snapshot/restore support (called from snapshot.cpp)
+void agc_trace_save(AgcTraceSnapState* out) {
+    out->ops.clear();
+    for (const auto& op : g_trace.ops) {
+        out->ops.push_back({op.op, op.fn, op.t_ms});
+    }
+    out->start_ms    = g_trace.start_ms;
+    out->tokens_used = g_trace.tokens_used;
+}
+
+void agc_trace_restore_state(const AgcTraceSnapState* in) {
+    agc_snapshot_discard(g_trace.snap);  // free snapshot stored at trace start
+    g_trace.ops.clear();
+    for (const auto& op : in->ops) {
+        g_trace.ops.push_back({op.op, op.fn, op.t_ms});
+    }
+    g_trace.start_ms    = in->start_ms;
+    g_trace.tokens_used = in->tokens_used;
+    g_trace.snap        = nullptr;
+}

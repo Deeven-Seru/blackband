@@ -27,6 +27,7 @@ add_library(agentc_codegen  src/codegen/codegen.cpp)
 # Runtime library
 add_library(agentc_runtime STATIC
     runtime/agentc_runtime.cpp
+    runtime/snapshot.cpp
     runtime/modules/io.cpp
     runtime/modules/net.cpp
     runtime/modules/val.cpp

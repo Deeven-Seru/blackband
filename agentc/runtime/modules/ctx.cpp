@@ -1,6 +1,7 @@
 // runtime/modules/ctx.cpp
 
 #include "ctx.hpp"
+#include "../snapshot.hpp"
 #include <cstdio>
 #include <cstring>
 #include <string>
@@ -56,6 +57,19 @@ AgcStr agc_budget_inspect() {
         (long long)(g_budget_cap * 8 / 10),  // 80%
         (long long)g_budget_cap);
     return agc_make_str(buf);
+}
+
+// Save/restore budget state for snapshot/restore support (called from snapshot.cpp)
+void agc_budget_save(AgcBudgetState* out) {
+    out->cap  = g_budget_cap;
+    out->used = g_budget_used;
+    out->peak = g_budget_peak;
+}
+
+void agc_budget_restore_state(const AgcBudgetState* in) {
+    g_budget_cap  = in->cap;
+    g_budget_used = in->used;
+    g_budget_peak = in->peak;
 }
 
 static size_t write_cb(char* ptr, size_t size, size_t nmemb, void* userdata) {
